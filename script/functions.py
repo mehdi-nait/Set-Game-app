@@ -103,58 +103,109 @@ def trim(frame):
 
 
 
-def find_ROI(image):
-    """Without plotting the steps, finds the contours and crops the image"""
-
-    #image = cv2.imread(image_path)
-    image = cv2.resize(image,(250,250)) # resizing 
-    #cv2_imshow(image)
-    image = cv2.GaussianBlur(image,(5,5),1) # gaussian blur to smoothen the image
-    edge = cv2.Canny(image,100,200) # detect edges from colored image
-
-    contours, hierarchy = cv2.findContours(edge,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE) #find contours
-
-    img_cpy = image.copy() #create an image copy
+def find_card(image):
+  """performs card segmentation of one card from a given image
+    @params : image : image matrix
     
-    index=0
-    thickness=3
-    color=(255,0,0)
+    @returns: segmented card image"""
+
+  #params
+  index=0
+  thickness=3
+  color=(255,0,0) #color of the drawn contour
+  size = (250,250)
+  my_box = []
+
+  
+  image = cv2.resize(image,size) # resizing 
+
+  image = cv2.GaussianBlur(image,(5,5),1) # gaussian blur to smoothen the image
+  edge = cv2.Canny(image,100,200) # detect edges from colored image
+  contours, hierarchy = cv2.findContours(edge,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE) #find contours
+  
+  contours = sorted(contours, key=cv2.contourArea,reverse=True)[:]     
+  
+  #finding rectangle coordinates
+  x,y,w,h = cv2.boundingRect(contours[0])
+  my_box.append((x,y,w,h))
+  #cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
+  #cv2_imshow(image)
+  #rotated rectangle to crop the card and adjust it
+
+  rect = cv2.minAreaRect(contours[0]) #create a rectangle from contour
+
+  box = cv2.boxPoints(rect) #convert into a four points array[[x y]]
+  box = np.int0(box) #cast into integers
+
+  angle = rect[2]
+
+  mask = np.zeros(image.shape, np.uint8)
+  cv2.drawContours(mask, [box], -1, (255, 255, 255), -1, cv2.LINE_AA)
+  result = cv2.bitwise_and(image, mask)
+  rotated = ndimage.rotate(result, angle)
+  trimmedImage = trim(rotated)
+  trimmedImage = cv2.resize(trimmedImage,(250,250))
+
+  return trimmedImage,my_box
+
+
+
+def find_cards(image):
+  """performs segmentation of all cards present on the image
+     @params : image_path
+     @returns: an array containing the segmented images"""
+  #params
+  index=-1
+  thickness=3
+  color=(255,0,0)
+  seuil = 0.5
+  cards = []
+  box = []
+
+  #image = cv2.imread(image_path)
+  image = cv2.resize(image,(750,750)) # resizing 
+  #creating image copies that we will be drawn on
+  
+  contours_image = image.copy() #the copy that will contain the contours (bleu)
+  box_image = image.copy()      #the copy that will contain the boxes 
+
+  #finding contours
+  image = cv2.GaussianBlur(image,(5,5),1) # gaussian blur to smoothen the image
+  edge = cv2.Canny(image,100,200) # detect edges from colored image
+  contours, hierarchy = cv2.findContours(edge,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE) #find contours
+
+  #sorting contours by surface
+  contours = sorted(contours, key=cv2.contourArea,reverse=True)[:]
+
+  #selecting a threshold and filtering noise
+  max = cv2.contourArea(contours[0])
+  thresh = max*seuil
+  contours = [c for c in contours if cv2.contourArea(c)>thresh]
+
+  #drawing contours on on the contours_image
+  #cv2.drawContours(contours_image,contours,index,color,thickness)
+ 
+  #from contours to bounding boxes
+
+  rect = [cv2.minAreaRect(i) for i in contours] #getting rectangle
+  
+
+  for i in range(0,len(contours)):
+    _ctr = contours[i]
+    x,y,w,h = cv2.boundingRect(_ctr)
+
+    box.append((x,y,w,h))
+    #cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
+
+  #rect = cv2.minAreaRect(_ctr)
+  #box = cv2.boxPoints(rect)
+  #box = np.int0(box)
+  #cv2.drawContours(image,[box],0,(0,0,255),2)
+
+  
+
+    cropped = image[y:y+h,x:x+w]
+    cards.append(cropped)
     
-    cv2.drawContours(img_cpy,contours,index,color,thickness)  #select first contour
-    #cv2_imshow(edge) #show edged image
-    #cv2_imshow(img_cpy) #show image + contours
-
-    ############################### min surf rect
-    img_cpy3 = image.copy()
-    rect = cv2.minAreaRect(contours[0]) #create a rectangle from contour
-
-    box = cv2.boxPoints(rect) #convert into a four points array[[x y]]
-    box = np.int0(box) #cast into integers
-
-    angle = rect[2]
-    #print("theta= ",angle)
-    im = cv2.drawContours(img_cpy3,[box],0,(0,0,255),2) #draw rectangular contour
-    #cv2_imshow(im)
-
-    rotated = ndimage.rotate(img_cpy3, angle)
-    #cv2_imshow(rotated)
-
-    pts = box
-
-    mask = np.zeros(image.shape, np.uint8)
-    cv2.drawContours(mask, [pts], -1, (255, 255, 255), -1, cv2.LINE_AA)
-    result = cv2.bitwise_and(image, mask)
-    rotated = ndimage.rotate(result, angle)
-
-    #cv2_imshow(rotated)
-
-    
-    thold = (rotated>120)*rotated
-    trimmedImage = trim(rotated)
-    trimmedImage = cv2.resize(trimmedImage,(160,160))
-    
-    #cv2_imshow(thold)
-    #cv2_imshow(trimmedImage)
-    return trimmedImage
-    
-    
+  return cards,box
+  
