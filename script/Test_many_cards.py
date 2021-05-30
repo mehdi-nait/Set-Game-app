@@ -7,7 +7,7 @@ from tflite_runtime.interpreter import load_delegate
 
 size = (250,250)
 pred_label = []
-cap = cv2.VideoCapture(0)
+
 
 interpreter = tf.lite.Interpreter(model_path="../CNN_V2_git.tflite",experimental_delegates=[load_delegate('libedgetpu.so.1.0')])
 interpreter.allocate_tensors()
@@ -18,14 +18,27 @@ output_details = interpreter.get_output_details()
 height = input_details[0]['shape'][1]
 width = input_details[0]['shape'][2]
 
+
+#test zone ################
+path = "/home/pi/Desktop/photos_multiple/photo5.jpg"
+
+
+
+#end of test zone ######################
+
 while True:
-    _, frame = cap.read()
+    
+    frame = cv2.imread(path)
+
+    frame = cv2.resize(frame,size)
+
+    #frame = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+    #_, frame = cap.read()
     #frame = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
     cards,box = find_cards(frame)
     cards = [cv2.resize(card,(160,160)) for card in cards]
     cards = [card.astype(np.float32) for card in cards]
     cards = [cv2.cvtColor(card,cv2.COLOR_BGR2RGB) for card in cards]
-    
     input_data_vector = [np.expand_dims(card, axis=0) for card in cards]
     
     for input_data in input_data_vector:
@@ -44,7 +57,7 @@ while True:
     #cv2.imshow('cropped',cropped)
     #cv2.imshow('ROI',cropped_cpy)
     key = cv2.waitKey(1)
-  
+    
 #closing all open windows 
 cv2.destroyAllWindows() 
 
