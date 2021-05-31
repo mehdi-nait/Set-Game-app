@@ -4,8 +4,8 @@ import tensorflow as tf
 from scipy import ndimage
 from functions import *
 from tflite_runtime.interpreter import load_delegate
-
-size = (250,250)
+import time
+size = (500,500)
 pred_label = []
 
 
@@ -20,8 +20,8 @@ width = input_details[0]['shape'][2]
 
 
 #test zone ################
-path = "/home/pi/Desktop/photos_multiple/photo5.jpg"
 
+path = "/home/pi/Desktop/Modèles/script/img.png"
 
 
 #end of test zone ######################
@@ -29,13 +29,12 @@ path = "/home/pi/Desktop/photos_multiple/photo5.jpg"
 while True:
     
     frame = cv2.imread(path)
-
+    
     frame = cv2.resize(frame,size)
-
-    #frame = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
-    #_, frame = cap.read()
-    #frame = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+   
+    
     cards,box = find_cards(frame)
+    
     cards = [cv2.resize(card,(160,160)) for card in cards]
     cards = [card.astype(np.float32) for card in cards]
     cards = [cv2.cvtColor(card,cv2.COLOR_BGR2RGB) for card in cards]
@@ -47,16 +46,17 @@ while True:
         prediction = interpreter.get_tensor(output_details[0]['index'])
         pred_id=np.argmax(prediction,axis=-1)
         pred_label.append(CLASS_NAMES[int(pred_id)])
-    
+        
     frame = cv2.resize(frame,(750,750))
     for b in box:
         x,y,w,h = b
         cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),1)
         cv2.putText(frame,pred_label[box.index(b)],(x,y), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
-    cv2.imshow('frame',frame)
+    cv2.imshow('frame ',frame)
     #cv2.imshow('cropped',cropped)
     #cv2.imshow('ROI',cropped_cpy)
     key = cv2.waitKey(1)
+    
     
 #closing all open windows 
 cv2.destroyAllWindows() 
