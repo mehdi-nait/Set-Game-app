@@ -45,7 +45,12 @@ while True:
     frame = cv2.resize(frame,size)
     
     #segmenting cards from the image
-    cards,box = find_cards(frame)
+    try:
+        cards,box = find_cards(frame)
+    except IndexError:
+        print("cards not found! please put cards in the deck!")
+        continue
+    
     
     #converting cards to a compatible format with the model input (1,160,160,3)
     
