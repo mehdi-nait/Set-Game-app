@@ -57,6 +57,8 @@ class Home():
         self.window=how.window
 
 
+#Add a button to go back home in instructions !!
+
 class HowToPlay:
     width=480
     height=480
